@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <!-- Include Bootstrap CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        /* Set the map container's dimensions */
+        #map {
+            width: 400px; /* Default width */
+            height: 400px; /* Default height */
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+        }
+
+        /* Set the image as a background */
+        body {
+            background-image: url('{{ location.image_path }}');
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-position: center;
+            height: 100vh;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Style the button */
+        #calculateDistanceButton {
+            margin-top: 20px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+        }
+
+        /* Style the dropdown list */
+        #mapDropdown {
+            max-width: 150px;
+            margin-top:10px;
+        }
+
+        /* Style the container for the map and button */
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Button to calculate and log the distance -->
+        <button id="calculateDistanceButton" class="btn btn-primary">Calculate Distance</button>
+    
+        <!-- Map container -->
+        <div id="map"></div>
+    </div>
+
+    <!-- Include Bootstrap and Leaflet scripts -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+
+    <script>
+        // Create the main map container
+        var mapContainer = L.map("map", {
+            maxZoom: 10, // Set the maximum zoom level
+            maxBounds: null // Remove the vertical limit
+        });
+
+        // Use the provided image as the map
+        var image = new Image();
+        image.src = '{{ custom_map.image_path }}';
+        
+
+        var bounds = [
+            [-Infinity, -Infinity], // Lower bounds
+            [Infinity, Infinity]    // Upper bounds
+        ];
+
+        image.onload = function () {
+            // Get the image dimensions
+            var imgWidth = this.width;
+            var imgHeight = this.height;
+            // Set the map bounds to match the image dimensions
+            mapContainer.setMaxBounds(bounds);
+
+            // Set the initial view and fit the map to the image dimensions
+            mapContainer.setView([imgHeight / 2, imgWidth / 2], {{ custom_map.initial_zoom }});
+            L.imageOverlay(image.src, bounds).addTo(mapContainer);
+        };
+
+        var marker = null;
+        var polyline = null;
+        var isPinPlaced = false;
+
+        // Add a marker when the map is clicked
+        mapContainer.on("click", function (e) {
+            if (!isPinPlaced) {
+                // Check if the click is within the defined bounds
+                if (mapContainer.getBounds().contains(e.latlng)) {
+                    if (marker) {
+                        marker.setLatLng(e.latlng); // Update the marker's location
+                    } else {
+                        marker = L.marker(e.latlng).addTo(mapContainer); // Add a new marker at the clicked location
+                    }
+                }
+            } else {
+                console.log("A pin is already placed. You cannot replace it.");
+            }
+        });
+
+        // Button click event handler to calculate and log the distance
+        document.getElementById("calculateDistanceButton").addEventListener("click", function () {
+            if (!isPinPlaced) { // Check if a pin is not already placed
+                if (marker) {
+                    // Get the coordinates of the marker
+                    var pin_X = marker.getLatLng().lat;
+                    var pin_Y = marker.getLatLng().lng;
+
+                    // Define the location coordinates
+                    var location_X = {{ location.image_location_X }};
+                    var location_Y = {{ location.image_location_Y }};
+
+                    // Calculate the distance using the Euclidean distance formula
+                    var distance = Math.sqrt(Math.pow(pin_X - location_X, 2) + Math.pow(pin_Y - location_Y, 2));
+
+                    // Log the distance
+                    console.log("Distance:", distance);
+
+                    // Log the location of the pin you pressed
+                    console.log("Pin Location:", pin_X, pin_Y);
+
+                    // Add a new marker at the location_X and location_Y
+                    var newMarker = L.marker([location_X, location_Y]).addTo(mapContainer);
+
+                    // Create a polyline connecting the original marker to the new marker
+                    if (polyline) {
+                        mapContainer.removeLayer(polyline); // Remove existing polyline
+                    }
+                    polyline = L.polyline([[pin_X, pin_Y], [location_X, location_Y]], {color: 'red'}).addTo(mapContainer);
+
+                    isPinPlaced = true; // Set the flag to indicate that a pin is placed
+                } else {
+                    console.log("No pin placed.");
+                }
+            } else {
+                console.log("A pin is already placed. You cannot replace it.");
+            }
+        });
+        
+        
+
+    </script>
+    </body>
+</html>
