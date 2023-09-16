@@ -6,7 +6,7 @@ from location import Location
 
 gothic_blueprint = Blueprint("gothic", __name__)
 
-api = "AIzaSyDuMoczJLeKXlAwPiyAun6oWRY73x16utI"
+api = ""
 
 
 score = 0
