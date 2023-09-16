@@ -7,7 +7,7 @@ from location import Location
 
 app = Flask(__name__, static_url_path="/geoguessr/static")
 
-api = "AIzaSyDuMoczJLeKXlAwPiyAun6oWRY73x16utI"
+api = ""
 
 
 score = 0
