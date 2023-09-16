@@ -1,11 +1,10 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for
+from flask import render_template, request, jsonify, Blueprint
 import random
 
 from custom_map import CustomMap
 from location import Location
 
-
-app = Flask(__name__, static_url_path="/geoguessr/static")
+gothic_blueprint = Blueprint("gothic", __name__)
 
 api = "AIzaSyDuMoczJLeKXlAwPiyAun6oWRY73x16utI"
 
@@ -14,14 +13,8 @@ score = 0
 round_counter = 1
 
 
-gothic1_map = CustomMap(
-    "gothic1",
-    "https://drive.google.com/uc?id=1mqBhVNb4LErYSNvq9zBo2r-iIgspk79b",
-    620,
-    490,
-    7,
-)
-gothic2_map = CustomMap("gothic2", "./static/maps/g2.png", 2000, 2000, 7)
+gothic1_map = CustomMap("gothic1", "./static/maps/g1.png", 7)
+gothic2_map = CustomMap("gothic2", "./static/maps/g2.png", 7)
 
 
 def get_random_location(map_pool="gothic1"):
@@ -63,7 +56,7 @@ def get_random_location(map_pool="gothic1"):
     return random.choice(chosen)
 
 
-@app.route("/geoguessr/")
+@gothic_blueprint.route("/geoguessr/")
 def home():
     global score, round_counter
     round_counter = 1
@@ -71,7 +64,7 @@ def home():
     return render_template("gothic.html")
 
 
-@app.route("/geoguessr/start_game", methods=["POST"])
+@gothic_blueprint.route("/geoguessr/start_game", methods=["POST"])
 def start_game():
     global score, round_counter, map_pool
     round_counter = 1
@@ -81,7 +74,7 @@ def start_game():
     return jsonify({"message": "Success"})
 
 
-@app.route("/geoguessr/update_score_and_round", methods=["POST"])
+@gothic_blueprint.route("/geoguessr/update_score_and_round", methods=["POST"])
 def update_score_and_round():
     global score, round_counter
     data = request.get_json()
@@ -90,7 +83,7 @@ def update_score_and_round():
     return jsonify({"message": "Success"})
 
 
-@app.route("/geoguessr/map")
+@gothic_blueprint.route("/geoguessr/map")
 def map():
     global loc
     loc = get_random_location(map_pool)
@@ -105,15 +98,11 @@ def map():
     )
 
 
-@app.route("/geoguessr/login")
+@gothic_blueprint.route("/geoguessr/login")
 def login():
     return render_template("login.html")
 
 
-@app.route("/geoguessr/register")
+@gothic_blueprint.route("/geoguessr/register")
 def register():
     return render_template("register.html")
-
-
-if __name__ == "__main__":
-    app.run(debug=True)

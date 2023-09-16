@@ -64,101 +64,212 @@
         <div id="map"></div>
     </div>
 
+    <div class="modal fade" id="mapPopup" tabindex="-1" role="dialog" aria-labelledby="mapPopupLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="mapPopupLabel">Game: {{map_pool}}, Map: {{custom_map.name}}, Round {{round}} / 5</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p id="distanceValue"></p>
+                <p id="totalScore"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="nextButton">Next</button>
+            </div>
+        </div>
+    </div>
+</div>
+
     <!-- Include Bootstrap and Leaflet scripts -->
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+
+    <!-- Include the Google Maps API script with your API key -->
+    <script src="https://maps.googleapis.com/maps/api/js?key={{api}}&callback=initMap" async defer></script>
 
     <script>
-        // Create the main map container
-        var mapContainer = L.map("map", {
-            maxZoom: 10, // Set the maximum zoom level
-            maxBounds: null // Remove the vertical limit
-        });
-
-        // Use the provided image as the map
-        var image = new Image();
-        image.src = '{{ custom_map.image_path }}';
-        
-
-        var bounds = [
-            [-Infinity, -Infinity], // Lower bounds
-            [Infinity, Infinity]    // Upper bounds
-        ];
-
-        image.onload = function () {
-            // Get the image dimensions
-            var imgWidth = this.width;
-            var imgHeight = this.height;
-            // Set the map bounds to match the image dimensions
-            mapContainer.setMaxBounds(bounds);
-
-            // Set the initial view and fit the map to the image dimensions
-            mapContainer.setView([imgHeight / 2, imgWidth / 2], {{ custom_map.initial_zoom }});
-            L.imageOverlay(image.src, bounds).addTo(mapContainer);
-        };
-
-        var marker = null;
+        var map; // Declare map as a global variable
+        var marker; // Declare marker as a global variable
+        var imageLocation = { lat: {{ location.image_location_X }}, lng: {{ location.image_location_Y }} }; // Specify the image location
         var polyline = null;
-        var isPinPlaced = false;
+        var imageMarker = null;
+        var locked = false;
+        var distance = 0;
 
-        // Add a marker when the map is clicked
-        mapContainer.on("click", function (e) {
-            if (!isPinPlaced) {
-                // Check if the click is within the defined bounds
-                if (mapContainer.getBounds().contains(e.latlng)) {
-                    if (marker) {
-                        marker.setLatLng(e.latlng); // Update the marker's location
-                    } else {
-                        marker = L.marker(e.latlng).addTo(mapContainer); // Add a new marker at the clicked location
-                    }
-                }
-            } else {
-                console.log("A pin is already placed. You cannot replace it.");
+        // Initialize the map
+        function initMap() {
+            // Define the map options
+            var mapOptions = {
+                zoom: {{custom_map.initial_zoom}}, // Adjust the zoom level as needed
+                center: { lat: 2.5, lng: 2.5 }, // Set the initial map center
+                mapTypeControlOptions: {
+                    mapTypeIds: ["custom_map"]
+                },
+                mapTypeId: "custom_map", // Use the custom map type
+                streetViewControl: false
+            };
+
+            // Create the map
+            var map = new google.maps.Map(document.getElementById('map'), mapOptions);
+
+            // Define the bounds of the custom map
+            var customMapBounds = new google.maps.LatLngBounds(
+                new google.maps.LatLng(0, 0), // Southwest corner
+                new google.maps.LatLng(5, 5) // Northeast corner
+            );
+
+            // Use a custom image as the map overlay
+            var customMapOverlay = new google.maps.GroundOverlay(
+                '{{custom_map.image_path}}', // Path to your custom map image
+                customMapBounds
+            );
+
+            // Add the custom map overlay to the map
+            customMapOverlay.setMap(map);
+
+            // Define the custom map type
+            var customMapType = new google.maps.ImageMapType({
+                getTileUrl: function(coord, zoom) {
+                    return null; // Return null to prevent loading base map tiles
+                },
+                tileSize: new google.maps.Size(256, 256),
+                maxZoom: 19,
+                name:null
+            });
+
+            // Set the custom map type to the map
+            map.mapTypes.set("custom_map", customMapType);
+
+            // Initialize a marker variable
+            var marker = null;
+
+            // Add a click event listener to place a pin on the map
+         customMapOverlay.addListener('click', function(event) {
+            // Check if a marker already exists
+            if (marker && !locked) {
+                // Remove the existing marker from the map
+                marker.setMap(null);
             }
+
+            // Create a new marker at the clicked location
+            if (!locked){
+              marker = new google.maps.Marker({
+                position: event.latLng,
+                map: map
+            });  
+            }
+            
+
+            // Log the pin's position to the console
+            console.log('Pin Position:', event.latLng.lat(), event.latLng.lng());
         });
 
-        // Button click event handler to calculate and log the distance
-        document.getElementById("calculateDistanceButton").addEventListener("click", function () {
-            if (!isPinPlaced) { // Check if a pin is not already placed
-                if (marker) {
-                    // Get the coordinates of the marker
-                    var pin_X = marker.getLatLng().lat;
-                    var pin_Y = marker.getLatLng().lng;
+        // Add a click event listener to the "Calculate Distance" button
+        document.getElementById('calculateDistanceButton').addEventListener('click', function() {
+            // Check if a marker exists
+            if (marker) {
+                // Calculate the distance between the marker and the specified image location
+                distance = calculateDistance(marker.position, imageLocation);
+                locked = true;
+                console.log('Distance:', distance.toFixed(2));
+                document.getElementById('distanceValue').innerText = "Your score this round was: " + (5000 - Math.round(distance*1000));
+                document.getElementById('totalScore').innerText = "Your total score is: " + ({{score}} + (5000 - Math.round(distance*1000)));
+                
 
-                    // Define the location coordinates
-                    var location_X = {{ location.image_location_X }};
-                    var location_Y = {{ location.image_location_Y }};
-
-                    // Calculate the distance using the Euclidean distance formula
-                    var distance = Math.sqrt(Math.pow(pin_X - location_X, 2) + Math.pow(pin_Y - location_Y, 2));
-
-                    // Log the distance
-                    console.log("Distance:", distance);
-
-                    // Log the location of the pin you pressed
-                    console.log("Pin Location:", pin_X, pin_Y);
-
-                    // Add a new marker at the location_X and location_Y
-                    var newMarker = L.marker([location_X, location_Y]).addTo(mapContainer);
-
-                    // Create a polyline connecting the original marker to the new marker
-                    if (polyline) {
-                        mapContainer.removeLayer(polyline); // Remove existing polyline
-                    }
-                    polyline = L.polyline([[pin_X, pin_Y], [location_X, location_Y]], {color: 'red'}).addTo(mapContainer);
-
-                    isPinPlaced = true; // Set the flag to indicate that a pin is placed
-                } else {
-                    console.log("No pin placed.");
+                // Remove the existing polyline if it exists
+                if (polyline) {
+                    polyline.setMap(null);
                 }
+
+                // Remove the existing imageMarker if it exists
+                if (imageMarker) {
+                    imageMarker.setMap(null);
+                }
+
+                // Draw a polyline between the marker and imageLocation
+                polyline = new google.maps.Polyline({
+                    path: [marker.position, imageLocation],
+                    geodesic: true,
+                    strokeColor: '#FF0000',
+                    strokeOpacity: 1.0,
+                    strokeWeight: 2
+                });
+
+                polyline.setMap(map);
+
+                // Create a marker at the image location
+                imageMarker = new google.maps.Marker({
+                    position: imageLocation,
+                    map: map
+                });
+
+                // Show the popup with the map and buttons
+                $('#mapPopup').modal('show');
             } else {
-                console.log("A pin is already placed. You cannot replace it.");
+                console.log('No marker placed.');
             }
         });
-        
-        
+        }
 
+        // Function to calculate the distance between two points (X, Y) and (X2, Y2)
+        function calculateDistance(point1, point2) {
+            var dx = point2.lat - point1.lat();
+            var dy = point2.lng - point1.lng();
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+
+        // Function to send score and round data to the server
+        function sendScoreAndRound(score) {
+            // Define the request headers
+            var headers = new Headers();
+            headers.append("Content-Type", "application/json; charset=utf-8");
+
+            // Define the request body as a JSON string
+            var body = JSON.stringify({ score: score });
+
+            // Create the request object
+            var request = new Request("/geoguessr/update_score_and_round", {
+                method: "POST",
+                headers: headers,
+                body: body,
+            });
+
+            // Send the request using fetch
+            fetch(request)
+                .then(function (response) {
+                    if (!response.ok) {
+                        throw new Error("Network response was not ok");
+                    }
+                })
+                .then(function (data) {
+                    // Handle the server's response if needed
+                    console.log("Score and round updated successfully.");
+                    if ({{round}} < 5){
+                        window.location.href = "/geoguessr/map";
+                    }
+                    else{
+                        window.location.href = "/geoguessr/";
+                    }
+                    
+                })
+                .catch(function (error) {
+                    console.error("Error updating score and round:", error);
+                });
+        }
+
+        // Example usage when the "Next" button is clicked
+        document.getElementById("nextButton").addEventListener("click", function () {
+            // Get the updated score and round from your game logic
+            var updatedScore = (5000 - Math.round(distance*1000)); 
+
+            // Send the updated data to the server
+            sendScoreAndRound(updatedScore);
+        });
     </script>
     </body>
 </html>
