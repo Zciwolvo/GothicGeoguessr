@@ -12,9 +12,6 @@
         #map {
             width: 400px; /* Default width */
             height: 400px; /* Default height */
-            position: absolute;
-            bottom: 10px;
-            right: 10px;
         }
 
         /* Set the image as a background */
@@ -39,19 +36,16 @@
             border: none;
         }
 
-        /* Style the dropdown list */
-        #mapDropdown {
-            max-width: 150px;
-            margin-top:10px;
-        }
-
         /* Style the container for the map and button */
         .container {
             display: flex;
             flex-direction: column;
-            align-items: flex-end;
+            align-items: end;
             margin: 0;
             padding: 0;
+            position: absolute;
+            right: 10px;
+            bottom: 10px;
         }
     </style>
 </head>
@@ -61,7 +55,8 @@
         <button id="calculateDistanceButton" class="btn btn-primary">Calculate Distance</button>
     
         <!-- Map container -->
-        <div id="map"></div>
+        <div id="map"></div>'
+        
     </div>
 
     <div class="modal fade" id="mapPopup" tabindex="-1" role="dialog" aria-labelledby="mapPopupLabel" aria-hidden="true">
@@ -253,7 +248,7 @@
                         window.location.href = "/geoguessr/map";
                     }
                     else{
-                        window.location.href = "/geoguessr/";
+                        window.location.href = "/geoguessr/leaderboards";
                     }
                     
                 })
@@ -270,6 +265,10 @@
             // Send the updated data to the server
             sendScoreAndRound(updatedScore);
         });
+
+        if (performance.navigation.type === 1) {
+            window.location.href = '/geoguessr/';
+        }
     </script>
     </body>
 </html>

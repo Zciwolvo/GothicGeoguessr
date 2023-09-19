@@ -1,12 +1,15 @@
 from flask import render_template, request, jsonify, Blueprint
 import random
+import os
+from dotenv import load_dotenv
 
 from custom_map import CustomMap
 from location import Location
 
 gothic_blueprint = Blueprint("gothic", __name__)
 
-api = "AIzaSyDuMoczJLeKXlAwPiyAun6oWRY73x16utI"
+load_dotenv()
+api = os.getenv("API")
 
 
 score = 0

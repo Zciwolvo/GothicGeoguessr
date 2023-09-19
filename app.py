@@ -1,22 +1,26 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for
 import random
+import os
+from dotenv import load_dotenv
+import jwt
+import json
+import secrets
 
 from custom_map import CustomMap
 from location import Location
-
+from leaderboards_entry import Entry
 
 app = Flask(__name__, static_url_path="/geoguessr/static")
+load_dotenv()
 
-api = "AIzaSyDuMoczJLeKXlAwPiyAun6oWRY73x16utI"
-
+api = os.getenv("API")
 
 score = 0
 round_counter = 1
 
-
 gothic1_map = CustomMap(
     "gothic1",
-    "https://drive.google.com/uc?id=1mqBhVNb4LErYSNvq9zBo2r-iIgspk79b",
+    "./static/maps/g1.png",
     620,
     490,
     7,
@@ -68,6 +72,12 @@ def home():
     global score, round_counter
     round_counter = 1
     score = 0
+    access_token = request.cookies.get("access_token")
+    if not access_token:
+        return render_template(
+            "gothic.html",
+            message="It looks like you're not logged in, so your score won't be saved to the leaderboards. Log in or create an account to start saving your scores and competing with others.",
+        )
     return render_template("gothic.html")
 
 
@@ -87,22 +97,64 @@ def update_score_and_round():
     data = request.get_json()
     score += data["score"]
     round_counter += 1
+    if round_counter == 6:
+        access_token = request.cookies.get("access_token")
+        if access_token:
+            decoded_token = jwt.decode(
+                access_token, key=os.getenv("JWT_SECRET"), algorithms=["HS256"]
+            )
+            username = decoded_token["sub"]["username"]
+            entry = Entry(username, score, map_pool)
+            entry.save_to_json()
     return jsonify({"message": "Success"})
+
+
+@app.route("/geoguessr/leaderboards")
+def leaderboards():
+    scores_dir = "/home/IgorGawlowicz/mysite/scores"
+    leaderboards_data = []
+
+    # Define the path to the scores.json file
+    scores_file_path = os.path.join(scores_dir, "scores.json")
+
+    if os.path.exists(scores_file_path):
+        with open(scores_file_path, "r") as scores_file:
+            scores_data = json.load(scores_file)
+
+            # Iterate through all entries in the scores.json file
+            for entry_id, score_data in scores_data.items():
+                leaderboards_data.append(
+                    {
+                        "user": score_data["username"],
+                        "score": score_data["score"],
+                        "gamemode": score_data["gamemode"],
+                        "date": score_data["date"],
+                    }
+                )
+
+    # Sort the leaderboard data by score (you can customize the sorting)
+    leaderboards_data.sort(key=lambda x: x["score"], reverse=True)
+
+    return render_template("leaderboards.html", leaderboards_data=leaderboards_data)
 
 
 @app.route("/geoguessr/map")
 def map():
     global loc
-    loc = get_random_location(map_pool)
-    return render_template(
-        "map.html",
-        custom_map=loc.map,
-        location=loc,
-        api=api,
-        score=score,
-        round=round_counter,
-        map_pool=map_pool,
-    )
+    try:
+        loc = get_random_location(map_pool)
+        return render_template(
+            "map.html",
+            custom_map=loc.map,
+            location=loc,
+            api=api,
+            score=score,
+            round=round_counter,
+            map_pool=map_pool,
+        )
+    except Exception as e:
+        print(f"An error occurred: {str(e)}")
+        return render_template("gothic.html")
 
 
 @app.route("/geoguessr/login")

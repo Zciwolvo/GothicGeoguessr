@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leaderboards</title>
+    <!-- Add Bootstrap CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<style>
+ .return{
+    position:absolute;
+    top:10px;
+    left:10px;
+ }
+</style>
+<body>
+    <div class="container mt-5">
+        <a href="/geoguessr/" class="return">Return to homepage</a>
+        <h1 class="text-center">Leaderboards</h1>
+
+        <!-- Search Bar -->
+        <div class="row mb-3">
+            <div class="col-md-6 offset-md-3">
+                <div class="input-group">
+                    <input type="text" class="form-control" id="searchName" placeholder="Search by name">
+                    <div class="input-group-append">
+                        <button class="btn btn-outline-secondary" type="button" id="searchButton">Search</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Mode Dropdown -->
+        <div class="row mb-3">
+            <div class="col-md-6 offset-md-3">
+                <select class="form-control" id="gameModeSelect">
+                    <option value="">All Game Modes</option>
+                    <option value="Gothic1">Gothic 1</option>
+                    <option value="Gothic2">Gothic 2</option>
+                    <option value="Gothic3">Gothic 3</option>
+                    <option value="Mixed">Mixed</option>
+                    <!-- Add more game modes as needed -->
+                </select>
+            </div>
+        </div>
+
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>User</th>
+                    <th>Score</th>
+                    <th>Game Mode</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for entry in leaderboards_data %}
+                <tr>
+                    <td>{{ entry.user }}</td>
+                    <td>{{ entry.score }}</td>
+                    <td>{{ entry.gamemode }}</td>
+                    <td>{{ entry.date }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <!-- Add Bootstrap JS and jQuery if needed -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script>
+    // JavaScript for handling search and filtering
+    document.addEventListener("DOMContentLoaded", function () {
+        // Get references to the search input and game mode select element
+        const searchInput = document.getElementById("searchName");
+        const gameModeSelect = document.getElementById("gameModeSelect");
+
+        // Get all table rows
+        const tableRows = document.querySelectorAll("tbody tr");
+
+        // Event listener for the search button
+        document.getElementById("searchButton").addEventListener("click", function () {
+            const searchTerm = searchInput.value.trim().toLowerCase();
+            const selectedGameMode = gameModeSelect.value.toLowerCase();
+
+            // Loop through table rows and hide/show based on search and game mode
+            tableRows.forEach(function (row) {
+                const username = row.querySelector("td:first-child").textContent.toLowerCase();
+                const gamemode = row.querySelector("td:nth-child(3)").textContent.toLowerCase();
+
+                // Check if the row matches the search and game mode criteria
+                const matchSearch = searchTerm === "" || username.includes(searchTerm);
+                const matchGameMode = selectedGameMode === "" || gamemode === selectedGameMode;
+
+                // Toggle row visibility based on matching criteria
+                row.style.display = matchSearch && matchGameMode ? "" : "none";
+            });
+        });
+    });
+</script>
+</body>
+</html>

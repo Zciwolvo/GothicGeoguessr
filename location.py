@@ -1,3 +1,6 @@
+import uuid
+
+
 class Location:
     def __init__(self, image_path, image_location_X, image_location_Y, map):
         self.image_path = image_path
