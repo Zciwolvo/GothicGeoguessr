@@ -15,6 +15,7 @@ load_dotenv()
 
 api = os.getenv("API")
 
+
 score = 0
 round_counter = 1
 
